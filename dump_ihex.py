@@ -4,7 +4,6 @@ import sys
 import vivisect
 import vivisect.cli as viv_cli
 import rflib.intelhex as intelhex
-#fw_s = ''' asm here '''
 import string
 
 valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
