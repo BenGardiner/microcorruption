@@ -5,6 +5,15 @@ import vivisect
 import vivisect.cli as viv_cli
 import rflib.intelhex as intelhex
 #fw_s = ''' asm here '''
+import string
+
+valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
+char_limit = 127
+def clean_name(name):
+    name = name.replace(' ','_')
+
+    name = ''.join(c for c in name if c in valid_chars)
+    return name[:char_limit]
 
 def processMem(mem=None, filename=None):
     if mem == None:
@@ -13,6 +22,7 @@ def processMem(mem=None, filename=None):
     fw_l = mem.split('\n')
 
     names = []
+    strings = []
     instrs = []
     segment = []
     segments = [ segment ]
@@ -33,6 +43,7 @@ def processMem(mem=None, filename=None):
                 # string
                 print "STRING: " + line
                 bytez = bytez[:-1] + '\x00'
+                strings.append((addr, len(bytez), bytez))
 
             elif 40 <= bytezlen <= 59 and bytez[0] == bytez[5] == bytez[10] == ' ':
                 # MEMORY line
@@ -106,6 +117,16 @@ def processMem(mem=None, filename=None):
 
     # and save the workspace to file
     vw.saveWorkspace()
+
+    # now let's write us an r2 startup file
+    with open(filename + '.r2', 'w') as r2_file:
+        r2_file.write("e asm.arch=msp430\n")
+        for (addr, name) in names:
+            r2_file.write("f %s%s @ 0x%x\n" % ('' if name == 'main' else 'loc.', name, addr))
+
+        for (addr, size, bytez) in strings:
+            r2_file.write("Cs 0x%x @0x%x\n" % (size, addr))
+            r2_file.write("f str.%s @ 0x%x\n" % (clean_name(bytez), addr))
 
     # doesn't really matter that we return anything, our job is done.
     # this is for interactive work (go ipython!)
